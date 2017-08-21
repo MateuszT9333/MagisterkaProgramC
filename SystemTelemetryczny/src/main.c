@@ -9,15 +9,16 @@
 #include <avr/io.h>
 #include <util/delay.h>
 #include <string.h>
+#define F_CPU 2457600UL
 
-#define F_CPU 1000000
+#define FOSC 2457600 // Clock Speed
+#define BAUD 9600
+#define MYUBRR FOSC/16/BAUD-1
 
 //
 // BEGIN: serial comms
 //
 // from data sheet
-#define BAUD 9600
-#define MYUBRR F_CPU/16/BAUD-1
 
 void USART_Init(unsigned int ubrr)
 {
@@ -56,16 +57,16 @@ int main (void)
 {
 
   // initialize USART
-  USART_Init(9600);
+  USART_Init(MYUBRR);
 
   // loop
 	//DDRD=0xFF;
   while (1) {
 
-	  _delay_ms(2000);
+	 _delay_ms(2500);
       //PORTD = 0xFF;
-      //serial_write_str("BOM\n");
-      USART_Transmit('s');
+      serial_write_str("OK\n");
+      //USART_Transmit(64);
 
   }
 

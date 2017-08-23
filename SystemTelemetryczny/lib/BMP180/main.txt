@@ -1,0 +1,70 @@
+//obsługa przerwania
+ISR(TIMER0_COMP_vect){
+
+	if(++time_1ms>9){
+		time_1ms=0;
+
+		if(++time_10ms>99){
+			time_10ms=0;
+
+			if(++time_1s>59) time_1s=0;
+		}
+	}
+
+	if(bmp180_time_1ms--);
+
+}// /isr
+
+int main(void){
+	
+	//inicjalizacja LCD
+	lcd_init();
+
+	//********** 	rejestracji funkcji i2c potrzebnych dla bmp180
+	register_twi_start_bmp180(TWI_start);						//rejestracja funkcji start z i2c
+	register_twi_stop_bmp180(TWI_stop);							//rejestracja funkcji stop z i2c
+	register_twi_read_bmp180(TWI_read);							//rejestracja funkcji read z i2c
+	register_twi_write_bmp180(TWI_write);						//rejestracja funkcji write z i2c
+
+	//inicjalizacja przerwań
+		//timer0 w trybie ctc
+	TCCR0 |= (1<<WGM01);					//tryb CTC
+	TCCR0 |= (1<<CS01) | (1<<CS00);			//preskaler 64
+	OCR0 = 255;								//co 1ms dla preskalera 64 bity i kwarcu 16MHz
+	TIMSK |= (1<<OCIE0);					//aktywacja przerwania
+
+	//aktywacja przerwań
+	sei();
+	
+	//program własciwy
+	lcd_cls();
+
+	//**********	odczyt współczynników potrzebnych do poprawnego pomiaru
+	ds_bmp180_coeff();
+
+	ds_bmp180_start(BMP180_OSS_8);
+
+	while(1){
+		
+		if( (time_1s != time_ls) && !(time_1s % 10) ){
+			time_ls = time_1s;
+			ds_bmp180_start(BMP180_OSS_8);
+			lcd_locate(0,0);
+			if(ds_bmp180.bmp180_temp_sign)
+				lcd_char('-');
+
+			lcd_int(ds_bmp180.bmp180_temp_cell);
+			lcd_char(',');
+			lcd_int(ds_bmp180.bmp180_temp_frac);
+
+			lcd_locate(0,8);
+			lcd_int(ds_bmp180.bmp180_pressure_cell);
+			lcd_char(',');
+			lcd_int(ds_bmp180.bmp180_pressure_frac);
+		}
+
+
+		ds_bmp180_measure();
+	}
+	
+}

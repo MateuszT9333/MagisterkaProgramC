@@ -8,8 +8,10 @@
 
 #include <avr/io.h>
 #include <util/delay.h>
-#include <string.h>
+#include <BMP180/ds_bmp180.h>
+s
 #define F_CPU 2457600UL
+
 
 #define FOSC 2457600 // Clock Speed
 #define BAUD 9600
@@ -20,55 +22,49 @@
 //
 // from data sheet
 
-void USART_Init(unsigned int ubrr)
-{
-  /*Set baud rate */
-  UBRR0H = (unsigned char)(ubrr>>8);
-  UBRR0L = (unsigned char)ubrr;
-  /*Enable receiver and transmitter */
-  UCSR0B = (1<<RXEN0)|(1<<TXEN0);
-  /* Set frame format: 8data, 1 stop bit */
-  UCSR0C = (1<<UCSZ00) | (1 << UCSZ01);
+void USART_Init(unsigned int ubrr) {
+	/*Set baud rate */
+	UBRR0H = (unsigned char) (ubrr >> 8);
+	UBRR0L = (unsigned char) ubrr;
+	/*Enable receiver and transmitter */
+	UCSR0B = (1 << RXEN0) | (1 << TXEN0);
+	/* Set frame format: 8data, 1 stop bit */
+	UCSR0C = (1 << UCSZ00) | (1 << UCSZ01);
 }
 
-void USART_Transmit(unsigned char data )
-{
-  /* Wait for empty transmit buffer */
-  while ( !( UCSR0A & (1<<UDRE0)) );
-  UDR0 = data;
-  /* Put data into buffer, sends the data */
+void USART_Transmit(unsigned char data) {
+	/* Wait for empty transmit buffer */
+	while (!( UCSR0A & (1 << UDRE0)))
+		;
+	UDR0 = data;
+	/* Put data into buffer, sends the data */
 }
 
 // write null terminated string
-void serial_write_str(const char* str)
-{
-  int len = strlen(str);
-  int i;
-  for (i = 0; i < len; i++) {
-    USART_Transmit(str[i]);
-  }
+void serial_write_str(const char* str) {
+	int len = strlen(str);
+	int i;
+	for (i = 0; i < len; i++) {
+		USART_Transmit(str[i]);
+	}
 }
 
-//
-// END: serial comms
-//
+//wysylanie danych do BT
+void wyslijDoBT(const char* str) {
 
-int main (void)
-{
+	serial_write_str(str); //wyslanie stringa
+}
 
-  // initialize USART
-  USART_Init(MYUBRR);
+int main(void) {
+	long int press;
+	long int temp;
 
-  // loop
-	//DDRD=0xFF;
-  while (1) {
 
-	 _delay_ms(2500);
-      //PORTD = 0xFF;
-      serial_write_str("OK\n");
-      //USART_Transmit(64);
 
-  }
+	while (1) {
+		_delay_ms(2600); //TODO nieprawidlowa wartosc opoznienia
+		wyslijDoBT("OK!\n");
+	}
 
-  return 1;
+	return 0;
 }

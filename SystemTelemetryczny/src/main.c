@@ -10,8 +10,10 @@
 #include <util/delay.h>
 #include <BMP180/ds_bmp180.h>
 #include <avr/interrupt.h>
-#define F_CPU 2457600UL
+#include <I2C/i2cmaster.h>
+#include <DS085/bmp085.h>
 
+#define F_CPU 2457600UL
 
 #define FOSC 2457600 // Clock Speed
 #define BAUD 9600
@@ -21,49 +23,6 @@ volatile uint8_t time_1ms;
 volatile uint8_t time_10ms;
 volatile uint8_t time_1s;
 
-
-// procedura transmisji sygnału START
-void twiStart(void) {
-
-	TWCR = (1 << TWINT) | (1 << TWSTA) | (1 << TWEN);
-	while (!(TWCR & (1 << TWINT)))
-		;
-}
-
-// procedura transmisji sygnału STOP
-void twiStop(void) {
-
-	TWCR = (1 << TWINT) | (1 << TWEN) | (1 << TWSTO);
-	while ((TWCR & (1 << TWSTO)))
-		;
-}
-
-// procedura transmisji bajtu danych
-void twiWrite(uint8_t data) {
-
-	TWDR = data;
-	TWCR = (1 << TWINT) | (1 << TWEN);
-	while (!(TWCR & (1 << TWINT)))
-		;
-}
-
-//procedura odczytu bajtu danych
-uint8_t twiRead(uint8_t ack) {
-
-	TWCR = ack ?
-			((1 << TWINT) | (1 << TWEN) | (1 << TWEA)) :
-			((1 << TWINT) | (1 << TWEN));
-	while (!(TWCR & (1 << TWINT)))
-		;
-	return TWDR;
-}
-
-//
-// BEGIN: serial comms
-//
-// from data sheet
-
-volatile uint16_t ocrCount = 0;
 char ocrCountBuff[8];
 
 void USART_Init(unsigned int ubrr) {
@@ -85,6 +44,7 @@ void USART_Transmit(unsigned char data) {
 }
 
 // write null terminated string
+
 void serial_write_str(const char* str) {
 	int len = strlen(str);
 	int i;
@@ -95,9 +55,21 @@ void serial_write_str(const char* str) {
 
 //wysylanie danych do BT
 void wyslijDoBT(const char* str) {
+	//TODO odblokuj kanal UART(zablokuj komunikacje z GPS)
 	cli();
 	serial_write_str(str); //wyslanie stringa
 	sei();
+	//TODO zablokuj kanal UART(odblokuj komunikacja dla GPS)
+}
+void bmpRead(){
+	char itoaTemp[10];
+
+	wyslijDoBT("\n----------BT180 start--------\n");
+	ltoa(bmp085_getpressure(), itoaTemp, 10);
+	wyslijDoBT("Cisnienie->"); wyslijDoBT(itoaTemp);
+	itoa(bmp085_gettemperature(), itoaTemp, 10);
+	wyslijDoBT("\nTemperatura->"); wyslijDoBT(itoaTemp);
+	wyslijDoBT("\n----------BT180 koniec--------\n");
 }
 void timerInit(){
 	TCCR0A |= (1<< WGM01); //CTC
@@ -106,69 +78,18 @@ void timerInit(){
 	OCR0A= 200;
 
 }
-void BMPInit(){
-
-	void (*TWI_start)(void) = twiStart;
-	void (*TWI_stop)(void) = twiStop;
-	uint8_t (*TWI_read)(uint8_t) = twiRead;
-	void (*TWI_write)(uint8_t) = twiWrite;
-
-	register_twi_start_bmp180(TWI_start);						//rejestracja funkcji start z i2c
-	register_twi_stop_bmp180(TWI_stop);							//rejestracja funkcji stop z i2c
-	register_twi_read_bmp180(TWI_read);							//rejestracja funkcji read z i2c
-	register_twi_write_bmp180(TWI_write);
-
-	ds_bmp180_coeff();
-	ds_bmp180_start(BMP180_OSS_8);
-
-}
-void bmpMeasure(){
-	static int time_ls;
-	char itoaTemp [30];
-	if( (time_1s != time_ls) && !(time_1s % 2) ){
-		wyslijDoBT("\n----------BMP180 start------------");
-		time_ls = time_1s;
-
-		ds_bmp180_start(BMP180_OSS_8);
-
-
-		itoa(ds_bmp180.bmp180_temp_sign, itoaTemp, 10);
-		wyslijDoBT("\nznak: ");
-		wyslijDoBT(itoaTemp);
-
-		itoa(ds_bmp180.bmp180_temp_cell, itoaTemp, 10);
-		wyslijDoBT("\ntempc: ");
-		wyslijDoBT(itoaTemp);
-
-		itoa(ds_bmp180.bmp180_temp_frac, itoaTemp, 10);
-		wyslijDoBT("\ntempp: ");
-		wyslijDoBT(itoaTemp);
-
-		itoa(ds_bmp180.bmp180_pressure_cell, itoaTemp, 10);
-		wyslijDoBT("\ncisnieniec: ");
-		wyslijDoBT(itoaTemp);
-
-		itoa(ds_bmp180.bmp180_pressure_frac, itoaTemp, 10);
-		wyslijDoBT("\ncisnieniep: ");
-		wyslijDoBT(itoaTemp);
-		wyslijDoBT("\n----------BMP180 stop------------");
-
-	}
-
-	ds_bmp180_measure();
-}
 int main(void) {
-// Nie używać delay;
+// Nie używać delay
+
 	timerInit();
 	USART_Init(MYUBRR);
-	BMPInit();
+	bmp085_init();
 	sei();
 
 	while (1) {
-
-		bmpMeasure();
+		_delay_ms(2600);
+		bmpRead();
 	}
-
 	return 0;
 }
 

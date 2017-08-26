@@ -72,7 +72,7 @@ extern "C" {
 #define MPU6050_AGAIN MPU6050_ACCEL_LSB_16
 #endif
 
-#define MPU6050_CALIBRATEDACCGYRO 1 //set to 1 if is calibrated
+#define MPU6050_CALIBRATEDACCGYRO 0 //set to 1 if is calibrated
 #if MPU6050_CALIBRATEDACCGYRO == 1
 #define MPU6050_AXOFFSET 0
 #define MPU6050_AYOFFSET 0

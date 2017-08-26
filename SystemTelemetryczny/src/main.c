@@ -8,10 +8,10 @@
 
 #include <avr/io.h>
 #include <util/delay.h>
-#include <BMP180/ds_bmp180.h>
 #include <avr/interrupt.h>
 #include <I2C/i2cmaster.h>
 #include <DS085/bmp085.h>
+#include <MPU6050/mpu6050.h>
 
 #define F_CPU 2457600UL
 
@@ -22,6 +22,8 @@
 volatile uint8_t time_1ms;
 volatile uint8_t time_10ms;
 volatile uint8_t time_1s;
+
+
 
 char ocrCountBuff[8];
 
@@ -55,11 +57,9 @@ void serial_write_str(const char* str) {
 
 //wysylanie danych do BT
 void wyslijDoBT(const char* str) {
-	//TODO odblokuj kanal UART(zablokuj komunikacje z GPS)
-	cli();
+	switchToBtAtmega(); //wlacz komunikacje ATmega <-> BT
 	serial_write_str(str); //wyslanie stringa
-	sei();
-	//TODO zablokuj kanal UART(odblokuj komunikacja dla GPS)
+	switchToGpsBt(); //wlacz komunikacje GPS -> BT
 }
 void bmpRead(){
 	char itoaTemp[10];
@@ -71,39 +71,99 @@ void bmpRead(){
 	wyslijDoBT("\nTemperatura->"); wyslijDoBT(itoaTemp);
 	wyslijDoBT("\n----------BT180 koniec--------\n");
 }
-void timerInit(){
-	TCCR0A |= (1<< WGM01); //CTC
-	TCCR0B |= (1<< CS01); //preskaler clk/8
-	TIMSK0 |= (1 << OCIE0A);    //Set the ISR COMPA vect
-	OCR0A= 200;
+void mpuRead(){
+	int16_t axg=0;
+	int16_t ayg=0;
+	int16_t azg=0;
+	int16_t gxds=0;
+	int16_t gyds=0;
+	int16_t gzds=0;
 
+	char dtostrTemp[15];
+	mpu6050_getRawData(&axg, &ayg, &azg, &gxds, &gyds, &gzds);
+
+	wyslijDoBT("\n-----------MPU6050 start--------\n");
+
+	wyslijDoBT("\naxg->");
+	//dtostrf(axg,8,3, dtostrTemp);
+	itoa(axg, dtostrTemp, 10);
+	wyslijDoBT(dtostrTemp);
+
+	wyslijDoBT("\nayg->");
+	//dtostrf(ayg,8,3, dtostrTemp);
+	itoa(ayg, dtostrTemp, 10);
+	wyslijDoBT(dtostrTemp);
+
+	wyslijDoBT("\nazg->");
+	//dtostrf(azg,8,3, dtostrTemp);
+	itoa(azg, dtostrTemp, 10);
+	wyslijDoBT(dtostrTemp);
+
+	wyslijDoBT("\ngxds->");
+	//dtostrf(gxds,8,3, dtostrTemp);
+	itoa(gxds, dtostrTemp, 10);
+	wyslijDoBT(dtostrTemp);
+
+	wyslijDoBT("\ngyds->");
+	//dtostrf(gyds,8,3, dtostrTemp);
+	itoa(gyds, dtostrTemp, 10);
+	wyslijDoBT(dtostrTemp);
+
+	wyslijDoBT("\ngzds->");
+	//dtostrf(gzds,8,3, dtostrTemp);
+	itoa(gzds, dtostrTemp, 10);
+	wyslijDoBT(dtostrTemp);
+
+	wyslijDoBT("\n-----------MPU6050 stop--------\n");
+}
+
+//wylaczenie wszystkich kluczy na MN4066
+void turnOffAllSwitches(){
+//TODO wstawic bezpieczniki
+	//PORTX &=~(1 << PXX);
+	//PORTX &=~(1 << PXX);
+	//PORTX &=~(1 << PXX);
+	//PORTX &=~(1 << PXX);
+}
+//wlaczenie kluczy Atmega <-> Bt
+void turnOnBtAtmega(){
+//TODO wstawic bezpieczniki
+	//PORTX|=(1 << PXX);
+	//PORTX|=(1 << PXX);
+}
+//wlaczenie kluczyc Gps -> Bt
+void turnOnGpsBt(){
+//TODO wstawic bezpieczniki
+	//PORTX|=(1 << PXX);
+	//PORTX|=(1 << PXX);
+}
+
+//komunikacja ATmega <-> BT
+void switchToBtAtmega(){
+	turnOffAllSwitches();
+	turnOnBtAtmega();
+}
+//komunikacja GPS -> BT
+void switchToGpsBt(){
+	turnOffAllSwitches();
+	turnOnGpsBt();
+}
+//inicjalizacja wyjsc sterujacych MN4066
+void IO_init(){
+	//TODO ustawic cztery piny jako out
+	turnOffAllSwitches();
 }
 int main(void) {
-// Nie używać delay
-
-	timerInit();
+	IO_init();
+	i2c_init();
 	USART_Init(MYUBRR);
 	bmp085_init();
-	sei();
+	mpu6050_init();
 
 	while (1) {
 		_delay_ms(2600);
 		bmpRead();
+		mpuRead();
 	}
 	return 0;
-}
-
-ISR (TIMER0_COMPA_vect)  // timer0 1ms interrupt
-{
-	if(++time_1ms>9){
-			time_1ms=0;
-
-			if(++time_10ms>99){
-				time_10ms=0;
-
-				if(++time_1s>59) time_1s=0;
-			}
-		}
-
-		if(bmp180_time_1ms--);
 }

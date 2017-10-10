@@ -10,49 +10,49 @@
  *	All rights reserved.
  *
  *
- *	Przy pomocy ksi¹¿ki:
+ *	Przy pomocy ksiï¿½ï¿½ki:
  *							Mikrokontrolery AVR
- *							Jêzyk C - podstawy programowania
+ *							Jï¿½zyk C - podstawy programowania
  *
  *															Autor:
- *																Miros³aw Kardaœ
- *							Jêzyk C.
- *							Pasja programowania mikrokontrolerów 8-bitowych
+ *																Mirosï¿½aw Kardaï¿½
+ *							Jï¿½zyk C.
+ *							Pasja programowania mikrokontrolerï¿½w 8-bitowych
  *
  *															Autor:
- *																Miros³aw Kardaœ
+ *																Mirosï¿½aw Kardaï¿½
  *
- *	Do u¿ytkownika dostêpne s¹ nastêpuj¹ce elementy:
- *						*****funkcje do obs³ugi hp02s
+ *	Do uï¿½ytkownika dostï¿½pne sï¿½ nastï¿½pujï¿½ce elementy:
+ *						*****funkcje do obsï¿½ugi hp02s
  *
- * 		uint8_t ds_bmp180_coeff(void);											//odczyt wspó³czynników
- *	 	uint8_t ds_bmp180_measure(void);										//pomiar cisnienia - zwraca który etap jest wykonywany w danej chwili - 0 dla braku wykonywanego pomiaru
+ * 		uint8_t ds_bmp180_coeff(void);											//odczyt wspï¿½czynnikï¿½w
+ *	 	uint8_t ds_bmp180_measure(void);										//pomiar cisnienia - zwraca ktï¿½ry etap jest wykonywany w danej chwili - 0 dla braku wykonywanego pomiaru
  *	 																																				  - 1 dla startu pomiaru
  *	 																																				  - 2 po odczytaniu D1
  *	 																																				  - 3 po odczytaniu T1
  *	 																																				  - 4 koniec pomiaru
- *	 																																				  - 5 nastêpny pomiar do usrednienia
+ *	 																																				  - 5 nastï¿½pny pomiar do usrednienia
  * 		void ds_bmp180_start(uint8_t pres_oversampling);						//start pomiaru i ustawienie oversampling
  * 																															-	BMP180_OSS_1	0
  * 																															-	BMP180_OSS_2	1
  * 																															-	BMP180_OSS_4	2
  * 																															-	BMP180_OSS_8	3
- * 		void ds_bmp180_restart(void);											//restart uk³adu
- * 		uint8_t ds_bmp180_active(void);											//sprawdzenie czy uk³ad jest aktywny
+ * 		void ds_bmp180_restart(void);											//restart ukï¿½adu
+ * 		uint8_t ds_bmp180_active(void);											//sprawdzenie czy ukï¿½ad jest aktywny
  *
  *
- *						*****rejestracja funkcji i2c potrzebnych do prawid³owego dzia³ania biblioteki
+ *						*****rejestracja funkcji i2c potrzebnych do prawidï¿½owego dziaï¿½ania biblioteki
  *
  *		void register_twi_start_bmp180(void (*twi_callback)(void));				//rejestracja funkcji start z i2c
  * 		void register_twi_stop_bmp180(void (*twi_callback)(void));				//rejestracja funkcji stop z i2c
- * 		void register_twi_write_bmp180(void (*twi_callback)(uint8_t bajt));		//rejestracja funkcji zapisuj¹cej do i2c
- * 		void register_twi_read_bmp180(uint8_t (*twi_callback)(uint8_t ack));	//rejestracja funkcji odczytuj¹cej z i2c
+ * 		void register_twi_write_bmp180(void (*twi_callback)(uint8_t bajt));		//rejestracja funkcji zapisujï¿½cej do i2c
+ * 		void register_twi_read_bmp180(uint8_t (*twi_callback)(uint8_t ack));	//rejestracja funkcji odczytujï¿½cej z i2c
  *
  *
- *	W strukturze dostêpnej dla u¿ytkownika znajduje siê nastêpuj¹ce dane:
+ *	W strukturze dostï¿½pnej dla uï¿½ytkownika znajduje siï¿½ nastï¿½pujï¿½ce dane:
  *
- *		int32_t	bmp180_UT;					//wartosc UT odczytana z uk³adu
- *		int32_t bmp180_UP;					//wartosc UP odczytana z uk³adu
+ *		int32_t	bmp180_UT;					//wartosc UT odczytana z ukï¿½adu
+ *		int32_t bmp180_UP;					//wartosc UP odczytana z ukï¿½adu
  *		uint8_t bmp180_temp_sign;			//temperatura - znak
  *		uint8_t bmp180_temp_cell;			//temperatura - calosc
  *		uint8_t bmp180_temp_frac;			//temperatura - wartosc po przecinku
@@ -64,10 +64,10 @@
  *
  *	UWAGA!!!
  *
- *	W tym pliku nie nale¿y niczego zmieniaæ
- *	Do prawid³owego dzia³ania biblioteki, konieczne jest umieszczenie warunku:
+ *	W tym pliku nie naleï¿½y niczego zmieniaï¿½
+ *	Do prawidï¿½owego dziaï¿½ania biblioteki, konieczne jest umieszczenie warunku:
  *																				if(bmp180_time_1ms--);
- *																										w przerwaniu wystêpuj¹cym co 1ms.
+ *																										w przerwaniu wystï¿½pujï¿½cym co 1ms.
  *
  */
 
@@ -82,46 +82,46 @@
 
 #include "ds_bmp180.h"
 
-//adres uk³adu bmp180
+//adres ukï¿½adu bmp180
 #define	BMP180_ADR			0xEE
 
 //adres rejestru kontrolnego
 #define	BMP180_REG_ADR_CTRL		0xF4
 #define	BMP180_REG_MEAS_TEMP	0X2E	//pomiar temperatury
 #define BMP180_REG_MEAS_PRES_1	0x34	//pomiar cisnienia - oversampling pojedynczy
-#define BMP180_REG_MEAS_PRES_2	0x74	//pomiar cisnienia - oversampling podwójny
-#define BMP180_REG_MEAS_PRES_4	0xB4	//pomiar cisnienia - oversampling poczwórny
+#define BMP180_REG_MEAS_PRES_2	0x74	//pomiar cisnienia - oversampling podwï¿½jny
+#define BMP180_REG_MEAS_PRES_4	0xB4	//pomiar cisnienia - oversampling poczwï¿½rny
 #define BMP180_REG_MEAS_PRES_8	0xF4	//pomiar cisnienia - oversampling osmiokrotny
 
 #define BMP180_REG_CTRL_OSS		0x34	//pomiar cisnienia - baza do ustawienia oversamplingu
 
-#define BMP180_START_CONVERSION	5		//bit w rejestrze 0xF4 który okresla start pomiaru
+#define BMP180_START_CONVERSION	5		//bit w rejestrze 0xF4 ktï¿½ry okresla start pomiaru
 
-//adres komórki przechowuj¹cej wynik pomiaru
+//adres komï¿½rki przechowujï¿½cej wynik pomiaru
 #define BMP180_VALUE_ADR_MSB	0xF6
 #define BMP180_VALUE_ADR_LSB	0xF5
 #define BMP180_value_ADR_XLSB	0xF8	//odczyt najmniej znaczacych bitow dla UP - zalezy od OSS
 
-//adres komórki przechowuj¹cej id uk³adu
+//adres komï¿½rki przechowujï¿½cej id ukï¿½adu
 #define BMP180_ADR_ID			0xD0
 
-//adres komórki przechowuj¹cej wersjê rejestru
+//adres komï¿½rki przechowujï¿½cej wersjï¿½ rejestru
 #define	BMP180_ADR_REG_VER		0xD1
 
-//adres pierwszej komórki w pamiêci w której znajduje siê 8 najbardziej znacz¹cych bitów pierwszego wspó³czynnika AC1
+//adres pierwszej komï¿½rki w pamiï¿½ci w ktï¿½rej znajduje siï¿½ 8 najbardziej znaczï¿½cych bitï¿½w pierwszego wspï¿½czynnika AC1
 #define BMP180_ADR_COEF_AC1		0xAA
 
-//reset programowy uk³adu bmp180
-#define BMP180_RST_SOFT_REG		0xE0		//adres komórki
+//reset programowy ukï¿½adu bmp180
+#define BMP180_RST_SOFT_REG		0xE0		//adres komï¿½rki
 #define BMP180_RST_SOFT			0xB6		//wartosc
 
 
-//*****	zmienne potrzebne do obs³ugi bmp180 widoczne na zewnêtrz
+//*****	zmienne potrzebne do obsï¿½ugi bmp180 widoczne na zewnï¿½trz
 
 DS_BMP180	ds_bmp180;
 volatile uint8_t bmp180_time_1ms;
 
-//*****	struktury i zmienne potrzebne do obs³ugi bmp180 widoczne tylko wewnêtrz
+//*****	struktury i zmienne potrzebne do obsï¿½ugi bmp180 widoczne tylko wewnï¿½trz
 typedef struct{
 	int16_t		coef_AC1;
 	int16_t		coef_AC2;
@@ -143,7 +143,7 @@ typedef union{
 		uint8_t		bmp180_meas_temp:1;		//1
 		uint8_t		bmp180_meas_pres:1;		//2
 		uint8_t		bmp180_end_meas:1;		//3
-		uint8_t		bmp180_active:1;		//4		- czy uk³ad jest aktywny i dziala
+		uint8_t		bmp180_active:1;		//4		- czy ukï¿½ad jest aktywny i dziala
 		uint8_t		bmp180_pres_oss:2;		//5,6
 	};
 }BMP180_STATUS_CHIP;
@@ -154,7 +154,7 @@ static int32_t bmp_x1=0, bmp_x2=0,  bmp_b5=0, bmp_x3=0, bmp_b6=0;
 static uint32_t bmp_b4=0, bmp_b7=0;
 
 
-//*****	funkcje widoczne tylko wewn¹trz
+//*****	funkcje widoczne tylko wewnï¿½trz
 static void (*bmp180_twi_start)(void);
 static void (*bmp180_twi_stop)(void);
 static void (*bmp180_twi_write)(uint8_t bajt);
@@ -163,7 +163,7 @@ static uint8_t (*bmp180_twi_read)(uint8_t bajt);
 
 //temperatura
 void bmp180_calculate_temperatur(void){
-	//funkcja obliczajaca temperaturê
+	//funkcja obliczajaca temperaturï¿½
 
 	bmp_x1 = ds_bmp180.bmp180_UT - bmp180_value_callibration.coef_AC6;
 	bmp_x1 = bmp_x1 * bmp180_value_callibration.coef_AC5;
@@ -193,7 +193,7 @@ void bmp180_calculate_temperatur(void){
 
 //cisnienie
 void bmp180_calculate_pressure(void){
-	//funkcja obliczaj¹ca cisnienie
+	//funkcja obliczajï¿½ca cisnienie
 
 	bmp_b6 = bmp_b5 - 4000;
 
@@ -229,12 +229,12 @@ void bmp180_calculate_pressure(void){
 }
 
 
-//*****	funkcje widoczne na zewn¹trz
+//*****	funkcje widoczne na zewnï¿½trz
 
 uint8_t ds_bmp180_coeff(void){
-	//odczyt wspó³czynników kalibruj¹cych uk³ad, oraz danych identyfikuj¹cych uk³ad
+	//odczyt wspï¿½czynnikï¿½w kalibrujï¿½cych ukï¿½ad, oraz danych identyfikujï¿½cych ukï¿½ad
 
-	//sprawdzenie pod³aczenia uk³adu
+	//sprawdzenie podï¿½aczenia ukï¿½adu
 	ds_bmp180_active();
 
 	if(bmp180_status.bmp180_active){
@@ -242,10 +242,10 @@ uint8_t ds_bmp180_coeff(void){
 		bmp180_status.bmp180_active = 1;
 
 		bmp180_twi_start();
-		bmp180_twi_write(BMP180_ADR);				//adres uk³adu do zapisu
-		bmp180_twi_write(BMP180_ADR_COEF_AC1);		//adres pierwszej komórki w pamieci eeprom
+		bmp180_twi_write(BMP180_ADR);				//adres ukï¿½adu do zapisu
+		bmp180_twi_write(BMP180_ADR_COEF_AC1);		//adres pierwszej komï¿½rki w pamieci eeprom
 		bmp180_twi_start();							//ponowny start
-		bmp180_twi_write(BMP180_ADR | 0x01);		//adres z ¿adaniem odczytu
+		bmp180_twi_write(BMP180_ADR | 0x01);		//adres z ï¿½adaniem odczytu
 		bmp180_value_callibration.coef_AC1 = (bmp180_twi_read(1) << 8) | ( bmp180_twi_read(1) );
 		bmp180_value_callibration.coef_AC2 = (bmp180_twi_read(1) << 8) | ( bmp180_twi_read(1) );
 		bmp180_value_callibration.coef_AC3 = (bmp180_twi_read(1) << 8) | ( bmp180_twi_read(1) );
@@ -260,7 +260,7 @@ uint8_t ds_bmp180_coeff(void){
 		bmp180_twi_stop();
 
 		bmp180_twi_start();
-		bmp180_twi_write(BMP180_ADR);				//adres uk³adu do zapisu
+		bmp180_twi_write(BMP180_ADR);				//adres ukï¿½adu do zapisu
 		bmp180_twi_write(BMP180_ADR_REG_VER);			//odczytanie id _chip
 		bmp180_twi_start();
 		bmp180_twi_write(BMP180_ADR | 0x01);
@@ -277,7 +277,7 @@ uint8_t ds_bmp180_coeff(void){
 
 uint8_t ds_bmp180_measure(void){
 	//odczyt wartosci zmierzonych przez czujnik
-	static uint8_t bmp180_step = 0;		//który krok jest w chwili obecnej
+	static uint8_t bmp180_step = 0;		//ktï¿½ry krok jest w chwili obecnej
 
 	if( (bmp180_status.bmp180_start) && (bmp180_status.bmp180_active) ){
 
@@ -285,24 +285,24 @@ uint8_t ds_bmp180_measure(void){
 			case 0:
 				//rozpoczecie pomiaru temperatury
 				bmp180_twi_start();
-				bmp180_twi_write(BMP180_ADR);				//adres urz¹dzenia
+				bmp180_twi_write(BMP180_ADR);				//adres urzï¿½dzenia
 				bmp180_twi_write(BMP180_REG_ADR_CTRL);		//adres rejestru
 				bmp180_twi_write(BMP180_REG_MEAS_TEMP);		//pomiar temperatury
 				bmp180_twi_stop();
 
 				bmp180_time_1ms = 6;						//odczekanie 5ms na wykonanie pomiaru
-				bmp180_step = 1;							//przejscie od nastênego kroku
-
+				bmp180_step = 1;							//przejscie od nastï¿½nego kroku
+			break;
 			case 1:
 				//odczekanie 5ms
 				if(bmp180_time_1ms){		//jezeli jeszcze liczy
 					break;
-				}else{						//jezeli minê³o 5ms
-					bmp180_step = 2;		//przejscie do nastêpnego kroku
+				}else{						//jezeli minï¿½o 5ms
+					bmp180_step = 2;		//przejscie do nastï¿½pnego kroku
 				}
-
+			break;
 			case 2:
-				//Odczyt temperautry z rejestrów czujnika
+				//Odczyt temperautry z rejestrï¿½w czujnika
 				bmp180_twi_start();
 				bmp180_twi_write(BMP180_ADR);				//adres czujnika
 				bmp180_twi_write(BMP180_VALUE_ADR_MSB);		//adres rejestru zawierajacego zmierzone wartosci
@@ -311,29 +311,29 @@ uint8_t ds_bmp180_measure(void){
 				ds_bmp180.bmp180_UT = ( bmp180_twi_read(1) << 8) | ( bmp180_twi_read(0) );
 				bmp180_twi_stop();
 
-				bmp180_step = 3;							//przejscie do nastêpnego kroku
-
+				bmp180_step = 3;							//przejscie do nastï¿½pnego kroku
+			break;
 			case 3:
-				//rozpoczêcie pomiaru cisnienia
+				//rozpoczï¿½cie pomiaru cisnienia
 				bmp180_twi_start();
-				bmp180_twi_write(BMP180_ADR);				//adres urz¹dzenia
+				bmp180_twi_write(BMP180_ADR);				//adres urzï¿½dzenia
 				bmp180_twi_write(BMP180_REG_ADR_CTRL);		//adres rejestru
 				bmp180_twi_write( (bmp180_status.bmp180_pres_oss << 6) | BMP180_REG_CTRL_OSS);		//pomiar cisnienia
 				bmp180_twi_stop();
 
 				bmp180_time_1ms = 6 + 7 * bmp180_status.bmp180_pres_oss;						//odczekanie 5ms na wykonanie pomiaru
-				bmp180_step = 4;							//przejscie od nastênego kroku
-
+				bmp180_step = 4;							//przejscie od nastï¿½nego kroku
+			break;
 			case 4:
 				//odczekanie okreslonego czasu
 				if(bmp180_time_1ms){		//jezeli jeszcze liczy
 					break;
-				}else{						//jezeli minê³o 5ms
-					bmp180_step = 5;		//przejscie do nastêpnego kroku
+				}else{						//jezeli minï¿½o 5ms
+					bmp180_step = 5;		//przejscie do nastï¿½pnego kroku
 				}
-
+			break;
 			case 5:
-				//Odczyt cisnienia z rejestrów czujnika
+				//Odczyt cisnienia z rejestrï¿½w czujnika
 				bmp180_twi_start();
 				bmp180_twi_write(BMP180_ADR);				//adres czujnika
 				bmp180_twi_write(BMP180_VALUE_ADR_MSB);		//adres rejestru zawierajacego zmierzone wartosci
@@ -343,26 +343,26 @@ uint8_t ds_bmp180_measure(void){
 
 				bmp180_twi_stop();
 
-				bmp180_step = 6;							//przejscie do nastêpnego kroku
+				bmp180_step = 6;							//przejscie do nastï¿½pnego kroku
 
 				break;
 
 			case 6:
 				//obliczenie temperatury
 				bmp180_calculate_temperatur();
-				bmp180_status.bmp180_meas_temp = 1;			//pomiar i obliczenie temperatury zosta³ wykonany
+				bmp180_status.bmp180_meas_temp = 1;			//pomiar i obliczenie temperatury zostaï¿½ wykonany
 				bmp180_step = 7;
 				break;
 
 			case 7:
 				//obliczenie cisnienia
 				bmp180_calculate_pressure();
-				bmp180_status.bmp180_meas_pres = 1;			//pomiar i obliczenie cisnienia zosta³ wykonany
+				bmp180_status.bmp180_meas_pres = 1;			//pomiar i obliczenie cisnienia zostaï¿½ wykonany
 				bmp180_step = 8;
 				break;
 
 			case 8:
-				//pomiar i odczyt zosta³ wykonany
+				//pomiar i odczyt zostaï¿½ wykonany
 				bmp180_status.bmp180_end_meas = 1;
 				bmp180_step = 9;
 				break;
@@ -400,14 +400,14 @@ void ds_bmp180_start(uint8_t pres_oversampling){
 void ds_bmp180_restart(void){
 
 	/*
-	 * Programowy reset uk³adu
+	 * Programowy reset ukï¿½adu
 	 * Taki sam efekt jak po wylaczeniu zasilania
 	 *
 	 */
 
 	bmp180_twi_start();
-	bmp180_twi_write(BMP180_ADR);				//adres uk³adu do zapisu
-	bmp180_twi_write(BMP180_RST_SOFT_REG);		//rejestr powoduj¹cy reset uk³adu
+	bmp180_twi_write(BMP180_ADR);				//adres ukï¿½adu do zapisu
+	bmp180_twi_write(BMP180_RST_SOFT_REG);		//rejestr powodujï¿½cy reset ukï¿½adu
 	bmp180_twi_write(BMP180_RST_SOFT);			//wartosc powodujaca reset ukladu
 	bmp180_twi_stop();
 
@@ -416,12 +416,12 @@ void ds_bmp180_restart(void){
 
 uint8_t ds_bmp180_active(void){
 	/*
-	 * Funkcja sprawdzaj¹ca czy uk³ad jest aktywny i czy dziala
+	 * Funkcja sprawdzajï¿½ca czy ukï¿½ad jest aktywny i czy dziala
 	 */
 
-	//sprawdzenie pod³aczenia uk³adu
+	//sprawdzenie podï¿½aczenia ukï¿½adu
 	bmp180_twi_start();
-	bmp180_twi_write(BMP180_ADR);				//adres uk³adu do zapisu
+	bmp180_twi_write(BMP180_ADR);				//adres ukï¿½adu do zapisu
 	bmp180_twi_write(BMP180_ADR_ID);			//odczytanie id _chip
 	bmp180_twi_start();
 	bmp180_twi_write(BMP180_ADR | 0x01);
@@ -440,7 +440,7 @@ uint8_t ds_bmp180_active(void){
 
 
 
-//*****	rejestracja funkcji i2c potrzebnych do prawid³owego dzia³ania biblioteki
+//*****	rejestracja funkcji i2c potrzebnych do prawidï¿½owego dziaï¿½ania biblioteki
 
 void register_twi_start_bmp180(void (*twi_callback)(void)){
 	//rejestracja funkcji start z i2c
@@ -453,11 +453,11 @@ void register_twi_stop_bmp180(void (*twi_callback)(void)){
 }
 
 void register_twi_write_bmp180(void (*twi_callback)(uint8_t bajt)){
-	//rejestracja funkcji zapisuj¹cej do i2c
+	//rejestracja funkcji zapisujï¿½cej do i2c
 	bmp180_twi_write = twi_callback;
 }
 
 void register_twi_read_bmp180(uint8_t (*twi_callback)(uint8_t ack)){
-	//rejestracja funkcji odczytuj¹cej z i2c
+	//rejestracja funkcji odczytujï¿½cej z i2c
 	bmp180_twi_read = twi_callback;
 }

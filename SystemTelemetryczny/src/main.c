@@ -27,7 +27,7 @@ volatile uint8_t time_1s;
 
 char ocrCountBuff[8];
 
-void USART_Init(unsigned int ubrr) {
+void USART0_Init(unsigned int ubrr) {
 	/*Set baud rate */
 	UBRR0H = (unsigned char) (ubrr >> 8);
 	UBRR0L = (unsigned char) ubrr;
@@ -156,7 +156,7 @@ void IO_init(){
 int main(void) {
 	IO_init();
 	i2c_init();
-	USART_Init(MYUBRR);
+	USART0_Init(MYUBRR);
 	bmp085_init();
 	mpu6050_init();
 

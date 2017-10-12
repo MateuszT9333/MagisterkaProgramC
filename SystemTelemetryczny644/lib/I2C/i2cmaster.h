@@ -103,7 +103,7 @@ extern "C" {
  @param  void
  @return none
  */
-extern void I2C_INIT(void);
+extern void i2c_init(void);
 
 
 /** 

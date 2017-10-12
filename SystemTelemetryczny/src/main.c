@@ -16,8 +16,8 @@
 #define F_CPU 2457600UL
 
 #define FOSC 2457600 // Clock Speed
-#define BAUD 9600
-#define USART0_BAUDRATE FOSC/16/BAUD-1
+#define BAUD0 9600
+#define USART0_BAUDRATE FOSC/16/BAUD0-1
 
 volatile uint8_t time_1ms;
 volatile uint8_t time_10ms;

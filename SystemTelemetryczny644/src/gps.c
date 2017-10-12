@@ -48,34 +48,28 @@
 		+5v to +5v, GND to GND, TX on GPS to PD2(RX)
 */
 
-#include <avr/io.h>
 #include <avr/interrupt.h>
-#include <util/delay.h>
-#include <stdint.h>
-#include <string.h>
-#include <stdlib.h>
-#include <stdio.h>
-
-
-#include "GPS/gps.h"
-#include "GPS/common.h"
-#include "GPS/usart/usart.h"
+#include <avr/iomxx4.h>
+#include <DS085/bmp085.h>
+#include <GPS/gps.h>
 #include <I2C/i2cmaster.h>
+#include <MPU6050/mpu6050.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+#include <util/delay.h>
 
 ///Serial baudrate config
 
 ///Maximum length of a NEMA string for buffer allocation
 #define NMEA_BUFFER_LEN 85
 
-#define FOSC 8000000L // Clock Speed
+#define FOSC 1000000L // Clock Speed
 #define BAUD0 9600
 #define BAUD1 9600
 #define USART0_BAUDRATE (FOSC / 4 / BAUD0 - 1) / 2
 #define USART1_BAUDRATE (FOSC / 4 / BAUD1 - 1) / 2
-//#define FOSC 1000000L // Clock Speed
-//#define BAUD 9600
-////#define MYUBRR FOSC/16/BAUD-1
-//#define MYUBRR (FOSC / 4 / BAUD - 1) / 2
+
 /*
 		Globals
 */
@@ -88,6 +82,7 @@ volatile uint8_t buffer_index = 0;
 
 ///Pointer to our linked list of NEMA strings
 nmeaData *gpsData;
+int odczytalGPRMC = 0;
 
 void USART0_Init(unsigned int ubrr) { //inicjalizacja Bluetooth
 	/*Set baud rate */
@@ -157,125 +152,70 @@ void sendToGPS(const char* str) {
 	USART1_WRITE_STRING(str); //wyslanie stringa
 	sei();
 }
-/**
-	@brief Parse a NEMA string (of type GPRMC)
-	@param *item Pointer to the NEMA string
-*/
-int parseGPRMC(char *item) {
 
-	/*/ DEBUG - print NMEA string out
-	for(int x=0;x<NMEA_BUFFER_LEN;x++) {
-		usb_debug_putchar(item->nmeaString[x]);
-		if(item->nmeaString[x] == '\n') break;
-	}*/
+void bmpRead(){
+	char itoaTemp[10];
 
-	//DEBUG - output buffer
-	char output[NMEA_BUFFER_LEN] = "";
+	ltoa(bmp085_getpressure(), itoaTemp, 10);
+	sendToHC05("C"); sendToHC05(itoaTemp);
+	sendToHC05("\n");
 
-	//Init fix data object
-	fixData fix;
-	memset(&fix, 0x00, sizeof(fixData));
+	itoa(bmp085_gettemperature(), itoaTemp, 10);
+	sendToHC05("T"); sendToHC05(itoaTemp);
+	sendToHC05("\n");
 
-	//Process the NMEA string - split it up around the commas and
-	//pull out the values we're interested in
-	uint8_t pos = 0;
-	uint8_t decimalPos = 0;
-	char *res = strtok(item, ",");
-	while(res != NULL) {
-		pos++;
-		switch (pos) {
-			case 1:
-				//header
-				break;
-			case 2:
-				//time
-				fix.time = atol(res);
-				break;
-			case 3:
-				//valid fix? 0x41 is "A"
-				if(res[0] != 0x41) return 1;
-				break;
-			case 4:
-				//Copy latitude to fixData element
-				for(decimalPos=0;decimalPos<strlen(res);decimalPos++) {
-					//Look for "."
-					if(res[decimalPos] == 0x2E)
-						break;
-				}
-
-				//Check we found it - because we start counting decimalPos at 0, and string length from 1,
-				//these will only match if we reached the end of the string.
-				if(decimalPos == strlen(res)) return 1;
-
-				//Read first half
-				res[decimalPos] = 0x00;
-				fix.lat1 = atol(res);
-				fix.lat2 = atol(&res[decimalPos+1]);
-				break;
-			case 5:
-				//Add North / South to fixData element
-				memcpy(&fix.latDir, res, sizeof(char));
-				break;
-			case 6:
-				//Copy longitude to fixData element
-				for(decimalPos=0;decimalPos<strlen(res);decimalPos++) {
-					//Look for "."
-					if(res[decimalPos] == 0x2E)
-						break;
-				}
-
-				//Check we found it
-				if(decimalPos == strlen(res)) return 1;
-
-				//Read first half
-				res[decimalPos] = 0x00;
-				fix.lon1 = atol(res);
-				fix.lon2 = atol(&res[decimalPos+1]);
-				break;
-			case 7:
-				//Add East / West to fixData element
-				memcpy(&fix.lonDir, res, sizeof(char));
-				break;
-			case 8:
-				//Speed in knots
-				break;
-			case 9:
-				//Track angle
-				break;
-			case 10:
-				//date
-				fix.date = atol(res);
-				break;
-			case 11:
-				//Magnetic variation
-				break;
-			case 12:
-				//Magnetic variation N/S/E/W
-				break;
-			case 13:
-				//checksum
-				break;
-			default:
-				break;
-		}
-
-		//Next element
-		res = strtok(NULL, ",");
-	}
-
-	//Here you would extend the application to use the GPS data as required
-
-	//DEBUG - build output string
-	sprintf(output, "%sDate: %lu (%lu)\n", output, fix.date, fix.time);
-	sprintf(output, "%sLat: %lu.%lu%c\n", output, fix.lat1, fix.lat2, fix.latDir);
-	sprintf(output, "%sLon: %lu.%lu%c\n", output, fix.lon1, fix.lon2, fix.lonDir);
-	//DEBUG - print output string
-	for(int i=0; i < NMEA_BUFFER_LEN; i++) {
-		if(output[i] == '\0') {break;}
-	}
-
-	return 0;
 }
+
+void mpuRead(){
+	int16_t axg=0;
+	int16_t ayg=0;
+	int16_t azg=0;
+	int16_t gxds=0;
+	int16_t gyds=0;
+	int16_t gzds=0;
+
+	char dtostrTemp[15];
+	mpu6050_getRawData(&axg, &ayg, &azg, &gxds, &gyds, &gzds);
+
+
+	sendToHC05("ax");
+	//dtostrf(axg,8,3, dtostrTemp);
+	itoa(axg, dtostrTemp, 10);
+	sendToHC05(dtostrTemp);
+	sendToHC05("\n");
+
+	sendToHC05("ay");
+	//dtostrf(ayg,8,3, dtostrTemp);
+	itoa(ayg, dtostrTemp, 10);
+	sendToHC05(dtostrTemp);
+	sendToHC05("\n");
+
+	sendToHC05("az");
+	//dtostrf(azg,8,3, dtostrTemp);
+	itoa(azg, dtostrTemp, 10);
+	sendToHC05(dtostrTemp);
+	sendToHC05("\n");
+
+	sendToHC05("gx");
+	//dtostrf(gxds,8,3, dtostrTemp);
+	itoa(gxds, dtostrTemp, 10);
+	sendToHC05(dtostrTemp);
+	sendToHC05("\n");
+
+	sendToHC05("gy");
+	//dtostrf(gyds,8,3, dtostrTemp);
+	itoa(gyds, dtostrTemp, 10);
+	sendToHC05(dtostrTemp);
+	sendToHC05("\n");
+
+	sendToHC05("gz");
+	//dtostrf(gzds,8,3, dtostrTemp);
+	itoa(gzds, dtostrTemp, 10);
+	sendToHC05(dtostrTemp);
+	sendToHC05("\nEND\n");
+
+}
+
 void GPS_Init(){
 	//Init linked list, global buffer
 		gpsData = malloc(sizeof(nmeaData));
@@ -298,11 +238,11 @@ void GPS_Read_GPRMC() {
 		cli();
 		volatile nmeaData *item = gpsData;
 		gpsData = gpsData->next;
-		//sendToHC05(item->nmeaString);
 		sei();
 		//Filter messages, only interested in GPRMC strings
 		if (strncmp(item->nmeaString, "$GPRMC", 6) == 0) {
 			sendToHC05(item->nmeaString);
+			odczytalGPRMC = 1;
 		}
 		free((void *) item->nmeaString);
 		free((void *) item);
@@ -313,13 +253,19 @@ void GPS_Read_GPRMC() {
 	@brief Start point for the application
 */
 int main(void) {
-	GPS_Init();
-	USART1_Init(USART1_BAUDRATE);
-	GPS_Send_PMTK();
+	//GPS_Init();
+	//USART1_Init(USART1_BAUDRATE);
+	//GPS_Send_PMTK();
 	USART0_Init(USART0_BAUDRATE);
 	i2c_init();
+	bmp085_init();
+	mpu6050_init();
+			cli();
+
 	while (1) {
-		GPS_Read_GPRMC();
+			_delay_ms(1000);
+			bmpRead();
+			mpuRead();
 	}
 }
 

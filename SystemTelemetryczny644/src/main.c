@@ -117,7 +117,7 @@ void mpuRead(){
 	//dtostrf(gzds,8,3, dtostrTemp);
 	itoa(gzds, dtostrTemp, 10);
 	wyslijDoHC05(dtostrTemp);
-	wyslijDoHC05("\n");
+	wyslijDoHC05("\nEND\n");
 
 }
 

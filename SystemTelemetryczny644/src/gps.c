@@ -276,42 +276,50 @@ int parseGPRMC(char *item) {
 
 	return 0;
 }
+void GPS_Init(){
+	//Init linked list, global buffer
+		gpsData = malloc(sizeof(nmeaData));
+		gpsData->next = 0;
+		buffer = malloc(sizeof(char)*NMEA_BUFFER_LEN);
+
+}
+void GPS_Send_PMTK(){
+	//Init hardware
+	_delay_ms(100);
+	cli();
+	sendToGPS("$PMTK314,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*29"); //tylko gprmc
+	sei();
+	_delay_ms(80);
+}
+void GPS_Read_GPRMC() {
+	//New entry?
+	if (gpsData->next != 0) {
+		//There is! Move root along, process item
+		cli();
+		volatile nmeaData *item = gpsData;
+		gpsData = gpsData->next;
+		//sendToHC05(item->nmeaString);
+		sei();
+		//Filter messages, only interested in GPRMC strings
+		if (strncmp(item->nmeaString, "$GPRMC", 6) == 0) {
+			sendToHC05(item->nmeaString);
+		}
+		free((void *) item->nmeaString);
+		free((void *) item);
+	}
+}
 
 /**
 	@brief Start point for the application
 */
 int main(void) {
-
-	//Init linked list, global buffer
-	gpsData = malloc(sizeof(nmeaData));
-	gpsData->next = 0;
-	buffer = malloc(sizeof(char)*NMEA_BUFFER_LEN);
-
-	//Init hardware
-	_delay_ms(80);
+	GPS_Init();
 	USART1_Init(USART1_BAUDRATE);
+	GPS_Send_PMTK();
 	USART0_Init(USART0_BAUDRATE);
 	i2c_init();
-	_delay_ms(1000);
-	cli();
-	sendToGPS("$PMTK314,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*29"); //tylko gprmc
-	sei();
 	while (1) {
-		//New entry?
-		if (gpsData->next != 0) {
-			//There is! Move root along, process item
-			cli();
-			volatile nmeaData *item = gpsData;
-			gpsData = gpsData->next;
-				//sendToHC05(item->nmeaString);
-			sei();
-			//Filter messages, only interested in GPRMC strings
-			if (strncmp(item->nmeaString, "$GPRMC", 6) == 0){
-				sendToHC05(item->nmeaString);
-			}
-			free((void *) item->nmeaString);
-			free((void *) item);
-		}
+		GPS_Read_GPRMC();
 	}
 }
 

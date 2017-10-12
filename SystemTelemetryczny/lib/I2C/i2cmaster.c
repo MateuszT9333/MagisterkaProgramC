@@ -24,7 +24,7 @@
 /*************************************************************************
  Initialization of the I2C bus interface. Need to be called only once
 *************************************************************************/
-void i2c_init(void)
+void I2C_INIT(void)
 {
   /* initialize TWI clock: 100 kHz clock, TWPS = 0 => prescaler = 1 */
   

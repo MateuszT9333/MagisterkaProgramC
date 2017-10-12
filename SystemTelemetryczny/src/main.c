@@ -17,7 +17,7 @@
 
 #define FOSC 2457600 // Clock Speed
 #define BAUD 9600
-#define MYUBRR FOSC/16/BAUD-1
+#define USART0_BAUDRATE FOSC/16/BAUD-1
 
 volatile uint8_t time_1ms;
 volatile uint8_t time_10ms;
@@ -47,7 +47,7 @@ void USART_Transmit(unsigned char data) {
 
 // write null terminated string
 
-void serial_write_str(const char* str) {
+void USART0_WRITE_STRING(const char* str) {
 	int len = strlen(str);
 	int i;
 	for (i = 0; i < len; i++) {
@@ -56,20 +56,20 @@ void serial_write_str(const char* str) {
 }
 
 //wysylanie danych do BT
-void wyslijDoBT(const char* str) {
+void wyslijDoHC05(const char* str) {
 	switchToBtAtmega(); //wlacz komunikacje ATmega <-> BT
-	serial_write_str(str); //wyslanie stringa
+	USART0_WRITE_STRING(str); //wyslanie stringa
 	switchToGpsBt(); //wlacz komunikacje GPS -> BT
 }
 void bmpRead(){
 	char itoaTemp[10];
 
-	wyslijDoBT("\n----------BT180 start--------\n");
+	wyslijDoHC05("\n----------BT180 start--------\n");
 	ltoa(bmp085_getpressure(), itoaTemp, 10);
-	wyslijDoBT("Cisnienie->"); wyslijDoBT(itoaTemp);
+	wyslijDoHC05("Cisnienie->"); wyslijDoHC05(itoaTemp);
 	itoa(bmp085_gettemperature(), itoaTemp, 10);
-	wyslijDoBT("\nTemperatura->"); wyslijDoBT(itoaTemp);
-	wyslijDoBT("\n----------BT180 koniec--------\n");
+	wyslijDoHC05("\nTemperatura->"); wyslijDoHC05(itoaTemp);
+	wyslijDoHC05("\n----------BT180 koniec--------\n");
 }
 void mpuRead(){
 	int16_t axg=0;
@@ -82,39 +82,39 @@ void mpuRead(){
 	char dtostrTemp[15];
 	mpu6050_getRawData(&axg, &ayg, &azg, &gxds, &gyds, &gzds);
 
-	wyslijDoBT("\n-----------MPU6050 start--------\n");
+	wyslijDoHC05("\n-----------MPU6050 start--------\n");
 
-	wyslijDoBT("\naxg->");
+	wyslijDoHC05("\naxg->");
 	//dtostrf(axg,8,3, dtostrTemp);
 	itoa(axg, dtostrTemp, 10);
-	wyslijDoBT(dtostrTemp);
+	wyslijDoHC05(dtostrTemp);
 
-	wyslijDoBT("\nayg->");
+	wyslijDoHC05("\nayg->");
 	//dtostrf(ayg,8,3, dtostrTemp);
 	itoa(ayg, dtostrTemp, 10);
-	wyslijDoBT(dtostrTemp);
+	wyslijDoHC05(dtostrTemp);
 
-	wyslijDoBT("\nazg->");
+	wyslijDoHC05("\nazg->");
 	//dtostrf(azg,8,3, dtostrTemp);
 	itoa(azg, dtostrTemp, 10);
-	wyslijDoBT(dtostrTemp);
+	wyslijDoHC05(dtostrTemp);
 
-	wyslijDoBT("\ngxds->");
+	wyslijDoHC05("\ngxds->");
 	//dtostrf(gxds,8,3, dtostrTemp);
 	itoa(gxds, dtostrTemp, 10);
-	wyslijDoBT(dtostrTemp);
+	wyslijDoHC05(dtostrTemp);
 
-	wyslijDoBT("\ngyds->");
+	wyslijDoHC05("\ngyds->");
 	//dtostrf(gyds,8,3, dtostrTemp);
 	itoa(gyds, dtostrTemp, 10);
-	wyslijDoBT(dtostrTemp);
+	wyslijDoHC05(dtostrTemp);
 
-	wyslijDoBT("\ngzds->");
+	wyslijDoHC05("\ngzds->");
 	//dtostrf(gzds,8,3, dtostrTemp);
 	itoa(gzds, dtostrTemp, 10);
-	wyslijDoBT(dtostrTemp);
+	wyslijDoHC05(dtostrTemp);
 
-	wyslijDoBT("\n-----------MPU6050 stop--------\n");
+	wyslijDoHC05("\n-----------MPU6050 stop--------\n");
 }
 
 //wylaczenie wszystkich kluczy na MN4066
@@ -155,8 +155,8 @@ void IO_init(){
 }
 int main(void) {
 	IO_init();
-	i2c_init();
-	USART0_Init(MYUBRR);
+	I2C_INIT();
+	USART0_Init(USART0_BAUDRATE);
 	bmp085_init();
 	mpu6050_init();
 

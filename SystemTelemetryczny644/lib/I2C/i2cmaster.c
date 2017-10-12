@@ -36,7 +36,7 @@ void i2c_init(void)
 uint8_t i2c_sync(void){
 	uint16_t timeout = 100; 
 	while(!(TWCR & (1<<TWINT)) && timeout) {
-		_delay_us(1); 
+		_delay_us(100);
 		timeout--; 
 	}
 	return timeout != 0; 
@@ -45,7 +45,7 @@ uint8_t i2c_sync(void){
 uint8_t i2c_waitStop(void){
 	uint16_t timeout = 100; 
 	while((TWCR & (1<<TWSTO)) && timeout) {
-		_delay_us(1); 
+		_delay_us(100);
 		timeout--; 
 	}
 	return timeout != 0; 

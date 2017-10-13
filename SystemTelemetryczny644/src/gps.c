@@ -82,7 +82,6 @@ volatile uint8_t buffer_index = 0;
 
 ///Pointer to our linked list of NEMA strings
 nmeaData *gpsData;
-unsigned char value;
 
 void USART0_Init(unsigned int ubrr) { //inicjalizacja Bluetooth
 	/*Set baud rate */
@@ -138,8 +137,7 @@ void USART1_Transmit(unsigned char data) {
 unsigned char USART1_Receive(void) {
 
 	/* Wait for data to be received */
-	while (!(UCSR1A & (1 << RXC1)))
-		;
+	while (!(UCSR1A & (1 << RXC1)));
 	/* Get and return received data from buffer */
 	return UDR1;
 }
@@ -225,55 +223,61 @@ void mpuRead(){
 
 }
 
-void GPS_Init(){
-	//Init linked list, global buffer
-		gpsData = malloc(sizeof(nmeaData));
-		gpsData->next = 0;
-		buffer = malloc(sizeof(char)*NMEA_BUFFER_LEN);
-
-}
 void GPS_Send_PMTK(){
 	sendToGPS("$PMTK314,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*29"); //tylko gprmc
 }
+void GPS_Simple_Receive() {
+	unsigned char value = "";
+	uint8_t odbiorGPRMC = 0;
+	while (odbiorGPRMC == 0) {
+		value = USART1_Receive();
+
+		if (value == '$') {
+			value = USART1_Receive();
+			if (value == 'G') {
+				value = USART1_Receive();
+
+				if (value == 'P') {
+					value = USART1_Receive();
+
+					if (value == 'R') {
+						value = USART1_Receive();
+
+						if (value == 'M') {
+							value = USART1_Receive();
+
+							if (value == 'C') { // mamy gprmc
+								while (value != '\n') {
+									value = USART1_Receive();
+									USART0_Transmit(value);
+								}
+
+								odbiorGPRMC = 1;
+							}
+						}
+
+					}
+				}
+			}
+		}
+	}
+}
+
 
 /**
 	@brief Start point for the application
 */
 int main(void) {
 
-	//GPS_Init();
 	USART1_Init(USART1_BAUDRATE);
 	USART0_Init(USART0_BAUDRATE);
 	i2c_init();
 	bmp085_init();
 	mpu6050_init();
-	GPS_Send_PMTK();
-
 	while (1) {
-		//value = USART1_Receive();
-		USART0_Transmit(USART1_Receive());
-//		if (value == '$') {
-//			value = USART1_Receive();
-//
-//			if (value == 'G') {
-//				value = USART1_Receive();
-//
-//				if (value == 'P') {
-//					value = USART1_Receive();
-//
-//					if (value == 'R') {
-//						value = USART1_Receive();
-//
-//						if (value == 'M') {
-//							value = USART1_Receive();
-//
-//							if (value == 'C') {
-//							}
-//						}
-//					}
-//				}
-//			}
-//		}
+		bmpRead();
+		mpuRead();
+		GPS_Simple_Receive();
 	}
 }
 

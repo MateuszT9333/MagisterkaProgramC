@@ -82,6 +82,7 @@ volatile uint8_t buffer_index = 0;
 
 ///Pointer to our linked list of NEMA strings
 nmeaData *gpsData;
+unsigned char value;
 
 void USART0_Init(unsigned int ubrr) { //inicjalizacja Bluetooth
 	/*Set baud rate */
@@ -101,7 +102,7 @@ void USART1_Init(unsigned int ubrr) { //inicjalizacja GPS
 	UBRR1H = (unsigned char) (ubrr >> 8);
 	UBRR1L = (unsigned char) ubrr;
 	UCSR1A = (1<<U2X1);							//Double speed operation
-	UCSR1B = (1<<RXEN1) | (1<<RXCIE1)| (1 << TXEN0);		//Enable only RX and it's interrupt
+	UCSR1B = (1<<RXEN1) | (1 << TXEN0);		//Enable only RX
 	UCSR1C = (1<<UCSZ11) | (1<<UCSZ10);		//8 bit data
 	sei();
 }
@@ -112,8 +113,14 @@ void USART0_Transmit(unsigned char data) {
 	UDR0 = data;
 	/* Put data into buffer, sends the data */
 }
+unsigned char USART0_Receive( void ){
 
-// write null terminated string
+	/* Wait for data to be received */
+	while ( !(UCSR0A & (1<<RXC0)) )
+	;
+	/* Get and return received data from buffer */
+	return UDR0;
+}
 
 void USART0_WRITE_STRING(const char* str) {
 	int len = strlen(str);
@@ -128,7 +135,14 @@ void USART1_Transmit(unsigned char data) {
 	UDR1 = data;
 	/* Put data into buffer, sends the data */
 }
+unsigned char USART1_Receive(void) {
 
+	/* Wait for data to be received */
+	while (!(UCSR1A & (1 << RXC1)))
+		;
+	/* Get and return received data from buffer */
+	return UDR1;
+}
 // write null terminated string
 
 void USART1_WRITE_STRING(const char* str) {
@@ -141,15 +155,11 @@ void USART1_WRITE_STRING(const char* str) {
 
 //wysylanie danych do BT
 void sendToHC05(const char* str) {
-	cli();
 	USART0_WRITE_STRING(str); //wyslanie stringa
-	sei();
 }
 //wysylanie danych do GPS
 void sendToGPS(const char* str) {
-	cli();
 	USART1_WRITE_STRING(str); //wyslanie stringa
-	sei();
 }
 
 void bmpRead(){
@@ -223,95 +233,48 @@ void GPS_Init(){
 
 }
 void GPS_Send_PMTK(){
-	//Init hardware
-	_delay_ms(100);
-	cli();
 	sendToGPS("$PMTK314,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*29"); //tylko gprmc
-	sei();
-	_delay_ms(80);
-}
-void GPS_Read_GPRMC() {
-	//New entry?
-	if (gpsData->next != 0) {
-		//There is! Move root along, process item
-		cli();
-		volatile nmeaData *item = gpsData;
-		gpsData = gpsData->next;
-		sei();
-		//Filter messages, only interested in GPRMC strings
-		if (strncmp(item->nmeaString, "$GPRMC", 6) == 0) {
-			sendToHC05(item->nmeaString);
-		}
-		free((void *) item->nmeaString);
-		free((void *) item);
-	}
 }
 
 /**
 	@brief Start point for the application
 */
 int main(void) {
-	GPS_Init();
+
+	//GPS_Init();
 	USART1_Init(USART1_BAUDRATE);
-	GPS_Send_PMTK();
 	USART0_Init(USART0_BAUDRATE);
 	i2c_init();
 	bmp085_init();
 	mpu6050_init();
+	GPS_Send_PMTK();
 
 	while (1) {
-		GPS_Read_GPRMC();
+		//value = USART1_Receive();
+		USART0_Transmit(USART1_Receive());
+//		if (value == '$') {
+//			value = USART1_Receive();
+//
+//			if (value == 'G') {
+//				value = USART1_Receive();
+//
+//				if (value == 'P') {
+//					value = USART1_Receive();
+//
+//					if (value == 'R') {
+//						value = USART1_Receive();
+//
+//						if (value == 'M') {
+//							value = USART1_Receive();
+//
+//							if (value == 'C') {
+//							}
+//						}
+//					}
+//				}
+//			}
+//		}
 	}
 }
 
-/**
-	@brief Handle USART interrupts
-	This function is a time-critical parser of recieved USART data, and is called one character at a time.
-*/
-ISR(USART1_RX_vect) {
-	uint8_t c;
 
-	c = UDR1;
-	buffer[buffer_index] = c;
-	buffer_index++;
-	if(c == '\n') {
-		//We now have a full NMEA sentence
-		//Get to the end of the linked list
-		volatile nmeaData *item = gpsData;
-		if(item != 0)
-			while(item->next != 0)
-				item = item->next;
-
-		//Malloc a new item, move into it
-		item->next = (nmeaData *)malloc(sizeof(nmeaData));
-
-		//Memory full?
-		if(item->next == NULL) {
-			//Miss this message
-			buffer_index = 0;
-			return;
-		}
-
-		item = item->next;
-
-		//Set the nmeaString pointer to our completed NMEA sentence, and malloc a new buffer
-		item->nmeaString = buffer;
-		buffer = malloc(sizeof(char)*NMEA_BUFFER_LEN);
-
-		//Check we're not filling the memory
-		if(buffer == NULL) {
-			//Full! put the buffer pointer back...
-			buffer = item->nmeaString;
-			//Reset the index pointer
-			buffer_index = 0;
-			//Light up the PANIC-NOW led
-			return;
-		}
-
-		//Set the next pointer to 0
-		item->next = 0;
-
-		//Reset position counter
-		buffer_index = 0;
-	}
-}

@@ -1,52 +1,3 @@
-/**
-	@date 2013/07/08
-
-	@brief GPS with the Teensy 2.0 micro-controller
-
-	An application to read from an <a href='http://www.gtop-tech.com/en/product/MT3339_GPS_Module_04.html'>GlobalTop PA6H GPS module</a>.
-	Supports NEMA parsing, and uses dynamic memory allocation and linked lists to provide a reliable state machine.
-
-	Here's how it works;
-		Init all the vars, start up the USART and wait for input.
-
-		When the GPS module sends a character, the interrupt for USART rx is called,
-		our code puts the character into a buffer (of size NMEA_BUFFER_LEN) and
-		checks to see if it was a newline? (this indicates the end of a NMEA sentance).
-		If it is, we now have a full NMEA sentance in our buffer, if not, carry on till we do
- 		(and don't overflow).
-
-		Now we create a nmeaData instance in memory, set the nmeaString pointer to our buffer,
-		and make ourselves a new buffer instance.
-
-		Next we update the 'next' attribute of the nmeaData the main loop is using (gpsData) to
-		point at our new sentence. This triggers the main loop into processing the previous item.
-
-		We move gpsData along to the new instance, process and free the old instance, and wait to
-		start again.
-
-		In theory we should never miss a sentance as they're all buffered, though if we're too slow
-		reading the nmeaData items we'll fill the memory and crash...
-
-	Notes:
-		If at any point the LED on pin 6 lights up, a malloc() has failed in the ISR and our
-		memory is full, we're probably crashing at this point - at least we know why and can debug.
-
-		We could move the filter to be inside the USART rx interrupt to save on malloc'd memory
-		but it seems fine and really we want to keep the ISR as small (quick) as possible. It's
-		probably best this way round.
-
-		I'm testing on a GlobalTop PA6H GPS module (using a MediaTek MT3339 chipset) which supports
-		selective output, so you could easily filter unused NMEA sentences on the gps side, removing
-		the need to filter on the mcu side. Enable only GPRMC in this case by sending:
-			$PMTK314,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*29
-		to the unit. To re-enable all NMEA strings send:
-			$PMTK314,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0*28
-
-		Update rate can also be changed in a similar way.
-
-	Connections:
-		+5v to +5v, GND to GND, TX on GPS to PD2(RX)
-*/
 
 #include <avr/interrupt.h>
 #include <avr/iomxx4.h>
@@ -58,11 +9,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <util/delay.h>
-
-///Serial baudrate config
-
-///Maximum length of a NEMA string for buffer allocation
-#define NMEA_BUFFER_LEN 85
+#include <avr/wdt.h>
+#include <avr/sleep.h>
 
 #define FOSC 8000000L // Clock Speed
 #define BAUD0 9600
@@ -70,18 +18,6 @@
 #define USART0_BAUDRATE (FOSC / 4 / BAUD0 - 1) / 2
 #define USART1_BAUDRATE (FOSC / 4 / BAUD1 - 1) / 2
 
-/*
-		Globals
-*/
-///Pointer to our current RX buffer
-volatile char *buffer;
-
-///Counter for our current position in the buffer.
-///We don't check that (buffer_index < bufferSize) because we know the NEMA limits
-volatile uint8_t buffer_index = 0;
-
-///Pointer to our linked list of NEMA strings
-nmeaData *gpsData;
 
 void USART0_Init(unsigned int ubrr) { //inicjalizacja Bluetooth
 	/*Set baud rate */
@@ -97,13 +33,11 @@ void USART0_Init(unsigned int ubrr) { //inicjalizacja Bluetooth
 	sei();
 }
 void USART1_Init(unsigned int ubrr) { //inicjalizacja GPS
-	cli();
 	UBRR1H = (unsigned char) (ubrr >> 8);
 	UBRR1L = (unsigned char) ubrr;
 	UCSR1A = (1<<U2X1);							//Double speed operation
 	UCSR1B = (1<<RXEN1) | (1 << TXEN0);		//Enable only RX
 	UCSR1C = (1<<UCSZ11) | (1<<UCSZ10);		//8 bit data
-	sei();
 }
 
 void USART0_Transmit(unsigned char data) {
@@ -135,9 +69,9 @@ void USART1_Transmit(unsigned char data) {
 	/* Put data into buffer, sends the data */
 }
 unsigned char USART1_Receive(void) {
-
 	/* Wait for data to be received */
 	while (!(UCSR1A & (1 << RXC1)));
+	wdt_reset();
 	/* Get and return received data from buffer */
 	return UDR1;
 }
@@ -219,8 +153,7 @@ void mpuRead(){
 	//dtostrf(gzds,8,3, dtostrTemp);
 	itoa(gzds, dtostrTemp, 10);
 	sendToHC05(dtostrTemp);
-	sendToHC05("\nEND\n");
-
+	sendToHC05("\n");
 }
 
 void GPS_Send_PMTK(){
@@ -262,13 +195,39 @@ void GPS_Simple_Receive() {
 		}
 	}
 }
+void voltageOnBattery() {
+	char temp[15];
+	ADCSRA |= (1 << ADSC);
+	while (ADCSRA & (1 << ADSC));
+	itoa(ADC, temp, 10);
+	sendToHC05("V");
+	sendToHC05(temp);
+	sendToHC05("\nEND\n");
+	_delay_ms(10);
+	sleepForXInterrupts(15);
+}
+void sleepForXInterrupts(int numOfInterrupts) {
+	TCCR2B |= (1<<CS22) | (1<<CS21)|(1<<CS20);
+	TIMSK2 |= (1<<TOIE2);
+	set_sleep_mode(SLEEP_MODE_PWR_SAVE);
+	sleep_enable();
+	for(int i = numOfInterrupts; i>0; i--){
+		sleep_mode();
+	}
+	TCCR2B = 0;
+	TIMSK2 = 0;
 
+}
+void ADCEnable(){
+	ADCSRA |= (1<<ADEN);
+}
 
 /**
 	@brief Start point for the application
 */
 int main(void) {
-
+	wdt_enable(WDTO_8S);
+	ADCEnable();
 	USART1_Init(USART1_BAUDRATE);
 	USART0_Init(USART0_BAUDRATE);
 	i2c_init();
@@ -277,8 +236,11 @@ int main(void) {
 	while (1) {
 		bmpRead();
 		mpuRead();
+		voltageOnBattery();
 		GPS_Simple_Receive();
 	}
 }
-
+ISR(TIMER2_OVF_vect){
+	sleep_disable();
+}
 

@@ -64,7 +64,7 @@
 ///Maximum length of a NEMA string for buffer allocation
 #define NMEA_BUFFER_LEN 85
 
-#define FOSC 1000000L // Clock Speed
+#define FOSC 8000000L // Clock Speed
 #define BAUD0 9600
 #define BAUD1 9600
 #define USART0_BAUDRATE (FOSC / 4 / BAUD0 - 1) / 2
@@ -82,7 +82,6 @@ volatile uint8_t buffer_index = 0;
 
 ///Pointer to our linked list of NEMA strings
 nmeaData *gpsData;
-int odczytalGPRMC = 0;
 
 void USART0_Init(unsigned int ubrr) { //inicjalizacja Bluetooth
 	/*Set baud rate */
@@ -102,7 +101,7 @@ void USART1_Init(unsigned int ubrr) { //inicjalizacja GPS
 	UBRR1H = (unsigned char) (ubrr >> 8);
 	UBRR1L = (unsigned char) ubrr;
 	UCSR1A = (1<<U2X1);							//Double speed operation
-	UCSR1B = (1<<RXEN1) | (1<<RXCIE1) | (1 << TXEN0);		//Enable only RX and it's interrupt
+	UCSR1B = (1<<RXEN1) | (1<<RXCIE1)| (1 << TXEN0);		//Enable only RX and it's interrupt
 	UCSR1C = (1<<UCSZ11) | (1<<UCSZ10);		//8 bit data
 	sei();
 }
@@ -242,7 +241,6 @@ void GPS_Read_GPRMC() {
 		//Filter messages, only interested in GPRMC strings
 		if (strncmp(item->nmeaString, "$GPRMC", 6) == 0) {
 			sendToHC05(item->nmeaString);
-			odczytalGPRMC = 1;
 		}
 		free((void *) item->nmeaString);
 		free((void *) item);
@@ -253,19 +251,16 @@ void GPS_Read_GPRMC() {
 	@brief Start point for the application
 */
 int main(void) {
-	//GPS_Init();
-	//USART1_Init(USART1_BAUDRATE);
-	//GPS_Send_PMTK();
+	GPS_Init();
+	USART1_Init(USART1_BAUDRATE);
+	GPS_Send_PMTK();
 	USART0_Init(USART0_BAUDRATE);
 	i2c_init();
 	bmp085_init();
 	mpu6050_init();
-			cli();
 
 	while (1) {
-			_delay_ms(1000);
-			bmpRead();
-			mpuRead();
+		GPS_Read_GPRMC();
 	}
 }
 

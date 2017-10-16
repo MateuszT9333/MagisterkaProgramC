@@ -205,6 +205,7 @@ void voltageOnBattery() {
 	sendToHC05("\nEND\n");
 	_delay_ms(10);
 	sleepForXInterrupts(15);
+	sendToHC05("START\n");
 }
 void sleepForXInterrupts(int numOfInterrupts) {
 	TCCR2B |= (1<<CS22) | (1<<CS21)|(1<<CS20);

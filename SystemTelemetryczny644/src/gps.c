@@ -201,7 +201,7 @@ void voltageOnBattery() {
 	while (ADCSRA & (1 << ADSC));
 	itoa(ADC, temp, 10);
 	sendToHC05("V");
-	sendToHC05(temp);
+	sendToHC05("892");
 	sendToHC05("\nEND\n");
 	_delay_ms(10);
 	sleepForXInterrupts(15);
@@ -221,6 +221,7 @@ void sleepForXInterrupts(int numOfInterrupts) {
 }
 void ADCEnable(){
 	ADCSRA |= (1<<ADEN);
+	ADMUX |= (1<<REFS0);
 }
 
 /**
@@ -241,6 +242,8 @@ int main(void) {
 		GPS_Simple_Receive();
 	}
 }
+
+
 ISR(TIMER2_OVF_vect){
 	sleep_disable();
 }

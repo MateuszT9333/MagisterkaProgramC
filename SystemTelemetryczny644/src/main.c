@@ -18,6 +18,17 @@
 #define USART0_BAUDRATE (FOSC / 4 / BAUD0 - 1) / 2
 #define USART1_BAUDRATE (FOSC / 4 / BAUD1 - 1) / 2
 
+char napiecie[10];
+char gprmc[60];
+char temperatura[10];
+char cisnienie[10];
+char ax[10];
+char ay[10];
+char az[10];
+char gx[10];
+char gy[10];
+char gz[10];
+
 
 void USART0_Init(unsigned int ubrr) { //inicjalizacja Bluetooth
 	/*Set baud rate */
@@ -98,12 +109,14 @@ void bmpRead(){
 	char itoaTemp[10];
 
 	ltoa(bmp085_getpressure(), itoaTemp, 10);
-	sendToHC05("C"); sendToHC05(itoaTemp);
-	sendToHC05("\n");
+	for(int i=0;i<10;i++){
+		cisnienie[i]=itoaTemp[i];
+	}
 
 	itoa(bmp085_gettemperature(), itoaTemp, 10);
-	sendToHC05("T"); sendToHC05(itoaTemp);
-	sendToHC05("\n");
+	for(int i=0;i<10;i++){
+		temperatura[i]=itoaTemp[i];
+	}
 
 }
 
@@ -119,41 +132,41 @@ void mpuRead(){
 	mpu6050_getRawData(&axg, &ayg, &azg, &gxds, &gyds, &gzds);
 
 
-	sendToHC05("ax");
 	//dtostrf(axg,8,3, dtostrTemp);
 	itoa(axg, dtostrTemp, 10);
-	sendToHC05(dtostrTemp);
-	sendToHC05("\n");
+	for(int i=0;i<10;i++){
+		ax[i]=dtostrTemp[i];
+	}
 
-	sendToHC05("ay");
 	//dtostrf(ayg,8,3, dtostrTemp);
 	itoa(ayg, dtostrTemp, 10);
-	sendToHC05(dtostrTemp);
-	sendToHC05("\n");
+	for(int i=0;i<10;i++){
+		ay[i]=dtostrTemp[i];
+	}
 
-	sendToHC05("az");
 	//dtostrf(azg,8,3, dtostrTemp);
 	itoa(azg, dtostrTemp, 10);
-	sendToHC05(dtostrTemp);
-	sendToHC05("\n");
+	for(int i=0;i<10;i++){
+		az[i]=dtostrTemp[i];
+	}
 
-	sendToHC05("gx");
 	//dtostrf(gxds,8,3, dtostrTemp);
 	itoa(gxds, dtostrTemp, 10);
-	sendToHC05(dtostrTemp);
-	sendToHC05("\n");
+	for(int i=0;i<10;i++){
+		gx[i]=dtostrTemp[i];
+	}
 
-	sendToHC05("gy");
 	//dtostrf(gyds,8,3, dtostrTemp);
 	itoa(gyds, dtostrTemp, 10);
-	sendToHC05(dtostrTemp);
-	sendToHC05("\n");
+	for(int i=0;i<10;i++){
+		gy[i]=dtostrTemp[i];
+	}
 
-	sendToHC05("gz");
 	//dtostrf(gzds,8,3, dtostrTemp);
 	itoa(gzds, dtostrTemp, 10);
-	sendToHC05(dtostrTemp);
-	sendToHC05("\n");
+	for(int i=0;i<10;i++){
+		gz[i]=dtostrTemp[i];
+	}
 }
 
 void GPS_Send_PMTK(){
@@ -180,11 +193,11 @@ void GPS_Simple_Receive() {
 							value = USART1_Receive();
 
 							if (value == 'C') { // mamy gprmc
+								int i=0;
 								while (value != '\n') {
-									value = USART1_Receive();
-									USART0_Transmit(value);
+									gprmc[i++] = USART1_Receive();
 								}
-
+								i=0;
 								odbiorGPRMC = 1;
 							}
 						}
@@ -200,12 +213,17 @@ void voltageOnBattery() {
 	ADCSRA |= (1 << ADSC);
 	while (ADCSRA & (1 << ADSC));
 	itoa(ADC, temp, 10);
-	sendToHC05("V");
-	sendToHC05("892");
-	sendToHC05("\nEND\n");
+	if(ADC < 698){ // reset jak napiecie mniejsze od 4,5
+		    wdt_enable(WDTO_15MS);
+		    for(;;);
+
+	}
+	for(int i=0;i<10;i++){
+		napiecie[0]=temp[0];
+	}
 	_delay_ms(10);
 	sleepForXInterrupts(15);
-	sendToHC05("START\n");
+
 }
 void sleepForXInterrupts(int numOfInterrupts) {
 	TCCR2B |= (1<<CS22) | (1<<CS21)|(1<<CS20);
@@ -223,6 +241,21 @@ void ADCEnable(){
 	ADCSRA |= (1<<ADEN);
 	ADMUX |= (1<<REFS0);
 }
+void wyslijWiadomosc(){
+	sendToHC05("START\n");
+	sendToHC05(gprmc);
+	sendToHC05("C");sendToHC05(cisnienie);
+	sendToHC05("\nT");sendToHC05(temperatura);
+	sendToHC05("\nax");sendToHC05(ax);
+	sendToHC05("\nay");sendToHC05(ay);
+	sendToHC05("\naz");sendToHC05(az);
+	sendToHC05("\ngx");sendToHC05(gx);
+	sendToHC05("\ngy");sendToHC05(gy);
+	sendToHC05("\ngz");sendToHC05(gz);
+	sendToHC05("\nV");sendToHC05(napiecie);
+	sendToHC05("\nEND\n");
+
+}
 
 /**
 	@brief Start point for the application
@@ -235,11 +268,14 @@ int main(void) {
 	i2c_init();
 	bmp085_init();
 	mpu6050_init();
+	GPS_Send_PMTK();
 	while (1) {
-		bmpRead();
-		mpuRead();
 		voltageOnBattery();
 		GPS_Simple_Receive();
+		bmpRead();
+		mpuRead();
+		wyslijWiadomosc();
+
 	}
 }
 

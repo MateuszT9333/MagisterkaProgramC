@@ -5,7 +5,6 @@
 #include <avr/interrupt.h>
 #include <avr/iomxx4.h>
 #include <DS085/bmp085.h>
-#include <GPS/gps.h>
 #include <I2C/i2cmaster.h>
 #include <MPU6050/mpu6050.h>
 #include <stdint.h>
